@@ -386,6 +386,18 @@ legend('1 cell', '2 cell');
 xlabel('codebook interval (degree)');
 ylabel('Data rate (Mbps)');    
     
+figure;
+cdf_1 = cdfplot(CDF_rate_single(3,:));
+set(cdf_1,'color','r');
+hold on;
+cdf_2 = cdfplot(CDF_rate_multi(3,:));
+set(cdf_2,'color','b');
+title('CDF of data rate comparison');
+xlabel('Rate (Mbps) per user per time block');
+ylabel('CDF');
+legend('1 cell', '2 cell');
+hold off;
+
 clear Prx_dBm;
     
 
