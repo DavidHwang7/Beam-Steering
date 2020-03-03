@@ -23,12 +23,18 @@ phi = (0 : num_sample) * pi / num_sample;     % equally-spaced over [0,pi]
 psi = 2 * pi * d * cos(phi);
 
 %% Experiment 1 setting: 固定50 users , 固定4個beam, codebook分別間隔60、45、30、15、10、5(度)
-num_Rx=100;
+num_Rx=50;
 num_beam=4;
 num_time_blocks=100; % 每個user set都run 100~1000次
 %codebook_interval = [90 60 45 30 15 10 5];
 codebook_interval = [60 45 30 15 10 5];
 [~, num_codebook] = size(codebook_interval);
+
+chosen_codebook_interval=15;
+CDF_SINR_single=zeros(num_codebook,num_beam*num_time_blocks);
+CDF_SINR_multi=zeros(num_codebook,num_beam*2*num_time_blocks);
+CDF_rate_single=zeros(num_codebook,num_beam*num_time_blocks);
+CDF_rate_multi=zeros(num_codebook,num_beam*2*num_time_blocks);
 
 Ptx_total=(10^1.8)/1000; % transmitter's transmit power (watt)
 Ptx_beam = Ptx_total;
@@ -54,6 +60,7 @@ Prx_dBm = zeros(num_codebook, num_Rx, num_time_blocks);
 SINR_single = zeros(num_codebook, num_Rx, num_time_blocks);
 
 for n=1:num_codebook
+    cdf_index=1;
     degree_interval = codebook_interval(n);
     current_codebook_size = 180/degree_interval+1;
     a_current = zeros(current_codebook_size, N);
@@ -132,6 +139,8 @@ for n=1:num_codebook
             end
             Prx = 10^(Prx_dBm(n,user_chosen(i),t)/10);
             SINR_single(n,user_chosen(i),t) = Prx / (I_total + 10^(Noise_dBm/10));
+            CDF_SINR_single(n, cdf_index)=SINR_single(n,user_chosen(i),t);
+            cdf_index = cdf_index+1;
         end
     end
     
@@ -139,10 +148,11 @@ for n=1:num_codebook
 end
 
 Rate_single = bandwidth * log2(1 + SINR_single);
+CDF_rate_single = bandwidth * log2(1 + CDF_SINR_single);
 Total_Mb_per_user = sum(Rate_single,3);
 Rate_average_codebook_single = sum(Total_Mb_per_user,2)/num_time_blocks;
 
-%% Experiment 1-2: 固定50 users , 固定4個beam, codebook分別間隔 90、60、45、30、15、10、5(度)
+%% Experiment 1-2: multiple transmitter
 
 dist1=sqrt((Xrx-Xtx1).^2+(Yrx-Ytx1).^2); % the distance between transmitter1 and receivers
 dist2=sqrt((Xrx-Xtx2).^2+(Yrx-Ytx2).^2); % the distance between transmitter2 and receivers
@@ -165,6 +175,7 @@ Prx_dBm = zeros(num_codebook, num_Rx, num_time_blocks);
 SINR_multi = zeros(num_codebook, num_Rx, num_time_blocks);
 
 for n=1:num_codebook
+    cdf_index=1;
     degree_interval = codebook_interval(n);
     current_codebook_size = 180/degree_interval+1;
     a_current = zeros(current_codebook_size, N);
@@ -310,6 +321,10 @@ for n=1:num_codebook
             
             Prx1 = 10^(Prx_dBm(n,user_chosen1(i1),t)/10);
             SINR_multi(n,user_chosen1(i1),t) = Prx1 / (I_total1 + 10^(Noise_dBm/10));
+            
+            CDF_SINR_multi(n, cdf_index)=SINR_multi(n,user_chosen1(i1),t);
+            cdf_index = cdf_index+1;
+            
             i1 = i1+1;
             
             %%%%% Tx2 %%%%%
@@ -353,6 +368,10 @@ for n=1:num_codebook
             
             Prx2 = 10^(Prx_dBm(n,user_chosen2(i2),t)/10);
             SINR_multi(n,user_chosen2(i2),t) = Prx2 / (I_total2 + 10^(Noise_dBm/10));
+            
+            CDF_SINR_multi(n, cdf_index)=SINR_multi(n,user_chosen2(i2),t);
+            cdf_index = cdf_index+1;
+            
             i2 = i2+1;
             
             %Rate(n,user_chosen1(i1),t) = bandwidth * log2(1 + SINR1(n,i));
@@ -374,6 +393,7 @@ for n=1:num_codebook
 end
 
 Rate_multi = bandwidth * log2(1 + SINR_multi);
+CDF_rate_multi = bandwidth * log2(1 + CDF_SINR_multi);
 Total_Mb_per_user = sum(Rate_multi,3);
 Rate_average_codebook_multi = sum(Total_Mb_per_user,2)/num_time_blocks;
 
@@ -385,19 +405,18 @@ legend('1 cell', '2 cell');
 %axis([0, 60]);  %确定x?与y?框?大小
 xlabel('codebook interval (degree)');
 ylabel('Data rate (Mbps)');    
-    
+
 figure;
-cdf_1 = cdfplot(CDF_rate_single(3,:));
+cdf_1 = cdfplot(CDF_rate_single(2,:));
 set(cdf_1,'color','r');
 hold on;
-cdf_2 = cdfplot(CDF_rate_multi(3,:));
+cdf_2 = cdfplot(CDF_rate_multi(2,:));
 set(cdf_2,'color','b');
 title('CDF of data rate comparison');
 xlabel('Rate (Mbps) per user per time block');
 ylabel('CDF');
 legend('1 cell', '2 cell');
 hold off;
-
 clear Prx_dBm;
     
 
